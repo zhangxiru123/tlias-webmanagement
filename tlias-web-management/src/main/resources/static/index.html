@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tlias · 管理系统（前后端联调面板）</title>
+<style>
+  :root{
+    --blue:#2563eb; --blue-dark:#1e40af; --bg:#eef2f7; --panel:#fff;
+    --line:#e5e7eb; --text:#1f2937; --muted:#6b7280;
+    --danger:#dc2626; --danger-bg:#fee2e2; --ok:#16a34a; --ok-bg:#dcfce7;
+    --radius:10px; --shadow:0 2px 14px rgba(31,41,55,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0; font:14px/1.5 "Microsoft YaHei",system-ui,-apple-system,sans-serif; color:var(--text); background:var(--bg);}
+  button{border:0; border-radius:7px; padding:8px 14px; cursor:pointer; font:inherit; transition:.15s;}
+  button:hover{filter:brightness(.96)} button:disabled{opacity:.5; cursor:not-allowed}
+  input,select{border:1px solid #d1d5db; border-radius:6px; padding:8px 10px; background:#fff; font:inherit; color:var(--text);}
+  input:focus,select:focus{outline:2px solid #bfdbfe; border-color:var(--blue)}
+  label{color:#4b5563}
+  .hidden{display:none !important}
+  .primary{background:var(--blue); color:#fff}
+  .danger{background:var(--danger-bg); color:var(--danger)}
+  .plain{background:#eef2f7; color:#374151}
+  .ghost{background:transparent; color:#dbeafe; border:1px solid #ffffff55}
+  .block{width:100%}
+  .muted{color:var(--muted)}
+
+  /* ---------- 登录页 ---------- */
+  .login-view{min-height:100vh; display:grid; place-items:center; padding:20px;
+    background:radial-gradient(1200px 500px at 70% -10%,#3b82f6aa,transparent),linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);}
+  .login-card{width:min(400px,100%); background:#fff; border-radius:16px; padding:34px 32px 26px; box-shadow:0 18px 50px rgba(2,6,23,.45);}
+  .login-logo{width:52px; height:52px; border-radius:14px; display:grid; place-items:center; margin-bottom:14px;
+    background:linear-gradient(135deg,#3b82f6,#1d4ed8); color:#fff; font-size:24px; font-weight:800; letter-spacing:1px;}
+  .login-card h1{margin:0; font-size:20px; color:var(--text)}
+  .login-sub{margin:6px 0 22px; color:var(--muted); font-size:13px}
+  .login-card .f-item{display:block; margin-bottom:14px}
+  .login-card .f-item span{display:block; margin-bottom:5px; font-size:13px}
+  .login-card .f-item input{width:100%}
+  .login-err{min-height:18px; margin:4px 0 8px; color:var(--danger); font-size:13px}
+  .login-hint{margin:18px 0 0; font-size:12px; color:var(--muted); text-align:center; line-height:1.7}
+
+  /* ---------- 主界面 ---------- */
+  header{height:64px; color:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 24px;
+    background:linear-gradient(105deg,#172554,#2563eb);}
+  .brand{display:flex; align-items:baseline; gap:12px}
+  .brand strong{font-size:20px; letter-spacing:.5px}
+  .brand span{font-size:13px; opacity:.72}
+  .user{display:flex; align-items:center; gap:12px}
+  .user .who{display:flex; flex-direction:column; align-items:flex-end; line-height:1.2}
+  .user .who b{font-size:14px}
+  .user .who small{opacity:.7; font-weight:400}
+  main{max-width:1280px; margin:22px auto; padding:0 18px}
+  .tabs{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap}
+  .tab{background:#e4e9f4; color:#334155}
+  .tab.active{background:var(--blue); color:#fff; box-shadow:0 4px 12px #2563eb44}
+  .panel{background:var(--panel); border-radius:14px; box-shadow:var(--shadow); padding:20px}
+  .toolbar{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap}
+  .toolbar h2{margin:0; font-size:17px}
+  .btn-group{display:flex; gap:8px}
+  .filters{display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; padding:14px; border:1px solid var(--line);
+    border-radius:10px; margin-bottom:16px; background:#f8fafc}
+  .filters label{display:flex; align-items:center; gap:6px}
+  .filters .range{display:flex; align-items:center; gap:6px}
+  .table-wrap{overflow:auto; border:1px solid var(--line); border-radius:10px}
+  table{width:100%; border-collapse:collapse}
+  th,td{padding:11px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap}
+  th{color:#64748b; font-weight:600; background:#f8fafc; position:sticky; top:0}
+  tbody tr:hover{background:#f8fafc}
+  td .ops{display:flex; gap:6px}
+  .avatar{width:34px; height:34px; border-radius:50%; object-fit:cover; vertical-align:middle; background:#dbeafe}
+  .no-avatar{display:inline-grid; place-items:center; width:34px; height:34px; border-radius:50%; background:#e0e7ff; color:#4338ca; font-size:13px}
+  .empty{text-align:center; color:var(--muted); padding:30px}
+  .footer{display:flex; justify-content:space-between; align-items:center; gap:10px; padding-top:16px; color:var(--muted); flex-wrap:wrap}
+  .pager{display:flex; align-items:center; gap:10px}
+  .chk{width:16px; height:16px; accent-color:var(--blue); cursor:pointer}
+
+  /* ---------- 弹窗 ---------- */
+  .modal{position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:15px; background:rgba(17,24,39,.55)}
+  .dialog{width:min(680px,100%); max-height:92vh; overflow:auto; padding:22px 24px; border-radius:14px; background:#fff; box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .dialog h3{margin:0 0 16px; font-size:17px}
+  .form{display:grid; grid-template-columns:1fr 1fr; gap:12px 16px}
+  .f-item{display:block}
+  .f-item span{display:block; margin-bottom:5px; font-size:13px; color:#374151}
+  .f-item input,.f-item select{width:100%}
+  .wide{grid-column:1/-1}
+  .actions{display:flex; justify-content:flex-end; gap:10px; margin-top:20px}
+
+  /* ---------- Toast ---------- */
+  .toast{position:fixed; right:22px; bottom:22px; z-index:99; color:#fff; padding:11px 16px; border-radius:9px; box-shadow:0 8px 26px rgba(0,0,0,.25); max-width:70vw}
+  .toast.ok{background:#111827} .toast.bad{background:#b91c1c}
+
+  /* ---------- 图表 ---------- */
+  .chart-grid{display:grid; grid-template-columns:1.25fr .75fr; gap:18px}
+  .chart-box{min-height:340px; padding:18px; border:1px solid var(--line); border-radius:10px; background:#fff}
+  .chart-box h3{margin:0 0 16px; font-size:15px}
+  .bar-chart{height:250px; display:flex; gap:16px; align-items:flex-end; border-bottom:1px solid #cbd5e1; padding:0 10px}
+  .bar-item{flex:1; min-width:50px; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:7px}
+  .bar{width:min(50px,86%); min-height:4px; border-radius:6px 6px 0 0; background:linear-gradient(#60a5fa,#2563eb)}
+  .bar-value{color:#1d4ed8; font-weight:700}
+  .bar-label{min-height:36px; text-align:center; color:#64748b}
+  .donut-wrap{display:grid; place-items:center; min-height:245px; position:relative}
+  .donut{width:205px; height:205px; border-radius:50%; position:relative}
+  .donut::after{content:""; position:absolute; inset:45px; background:#fff; border-radius:50%}
+  .donut-center{position:absolute; text-align:center; z-index:1; font-size:13px; color:var(--muted)}
+  .donut-center b{display:block; color:var(--text); font-size:25px}
+  .legend{display:flex; justify-content:center; flex-wrap:wrap; gap:14px; margin-top:12px}
+  .legend span::before{content:""; width:10px; height:10px; display:inline-block; margin-right:6px; border-radius:50%; background:var(--c)}
+  .chart-empty{color:var(--muted); text-align:center; padding-top:100px}
+
+  @media(max-width:760px){
+    main{margin-top:14px; padding:0 10px}
+    .brand span{display:none}
+    .filters,.toolbar,.footer{flex-direction:column; align-items:stretch}
+    .btn-group{justify-content:flex-end}
+    .form,.chart-grid{grid-template-columns:1fr}
+    .wide{grid-column:auto}
+  }
+</style></head>
+<body>
+
+<!-- ======================= 登录 ======================= -->
+<div id="loginView" class="login-view">
+  <form id="loginForm" class="login-card" autocomplete="on">
+    <div class="login-logo">T</div>
+    <h1>Tlias 管理系统</h1>
+    <p class="login-sub">前后端联调面板，请先登录获取令牌</p>
+    <label class="f-item"><span>用户名</span><input id="loginUsername" name="username" autocomplete="username" placeholder="请输入用户名" required /></label>
+    <label class="f-item"><span>密码</span><input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" required /></label>
+    <p id="loginErr" class="login-err"></p>
+    <button id="loginBtn" class="primary block" type="submit">登 录</button>
+    <p class="login-hint">提示：账号密码见 emp 表，例如 jinyong / 123456</p>
+  </form>
+</div>
+
+<!-- ======================= 主界面 ======================= -->
+<div id="appView" class="hidden">
+  <header>
+    <div class="brand"><strong>Tlias 管理系统</strong><span>前后端联调面板</span></div>
+    <div class="user">
+      <span class="who"><b id="userName"></b><small id="userAccount"></small></span>
+      <button class="ghost" id="logoutBtn">退出登录</button>
+    </div>
+  </header>
+
+  <main>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-view="employees">员工管理</button>
+      <button class="tab" data-view="departments">部门管理</button>
+      <button class="tab" data-view="clazzs">班级管理</button>
+      <button class="tab" data-view="reports">数据报表</button>
+    </nav>
+
+    <!-- 员工管理 -->
+    <section id="view-employees" class="panel">
+      <div class="toolbar">
+        <h2>员工列表</h2>
+        <div class="btn-group">
+          <button class="danger" id="empBatchDel" disabled>批量删除</button>
+          <button class="primary" id="addEmpBtn">＋ 新增员工</button>
+        </div>
+      </div>
+      <form id="empSearch" class="filters">
+        <label>姓名 <input name="name" placeholder="请输入姓名" /></label>
+        <label>性别
+          <select name="gender"><option value="">全部</option><option value="1">男</option><option value="2">女</option></select>
+        </label>
+        <label class="range">入职日期 <input name="begin" type="date" /> 至 <input name="end" type="date" /></label>
+        <div class="btn-group">
+          <button class="primary" type="submit">查询</button>
+          <button class="plain" type="reset">重置</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:36px"><input type="checkbox" id="empCheckAll" class="chk" title="全选本页" /></th>
+            <th>头像</th><th>ID</th><th>姓名</th><th>用户名</th><th>性别</th><th>手机号</th>
+            <th>职位</th><th>部门</th><th>工资</th><th>入职日期</th><th>操作</th>
+          </tr></thead>
+          <tbody id="empRows"></tbody>
+        </table>
+      </div>
+      <div class="footer">
+        <span id="empTotal">共 0 条</span>
+        <div class="pager">
+          <button id="empPrev" class="plain">上一页</button>
+          <span id="empInfo">第 1 页</span>
+          <button id="empNext" class="plain">下一页</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 部门管理 -->
+    <section id="view-departments" class="panel hidden">
+      <div class="toolbar">
+        <h2>部门管理</h2>
+        <button class="primary" id="addDeptBtn">＋ 新增部门</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>部门名称</th><th>创建时间</th><th>更新时间</th><th>操作</th></tr></thead>
+          <tbody id="deptRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 班级管理 -->
+    <section id="view-clazzs" class="panel hidden">
+      <div class="toolbar">
+        <h2>班级列表</h2>
+        <button class="primary" id="addClzBtn">＋ 新增班级</button>
+      </div>
+      <form id="clzSearch" class="filters">
+        <label>班级名称 <input name="name" placeholder="请输入班级名称" /></label>
+        <label>开班日期起 <input name="begin" type="date" /></label>
+        <label>结业日期止 <input name="end" type="date" /></label>
+        <div class="btn-group">
+          <button class="primary" type="submit">查询</button>
+          <button class="plain" type="reset">重置</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>ID</th><th>班级名称</th><th>教室</th><th>开班日期</th><th>结业日期</th>
+            <th>班主任ID</th><th>学科</th><th>创建时间</th><th>操作</th>
+          </tr></thead>
+          <tbody id="clzRows"></tbody>
+        </table>
+      </div>
+      <div class="footer">
+        <span id="clzTotal">共 0 条</span>
+        <div class="pager">
+          <button id="clzPrev" class="plain">上一页</button>
+          <span id="clzInfo">第 1 页</span>
+          <button id="clzNext" class="plain">下一页</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 数据报表 -->
+    <section id="view-reports" class="panel hidden">
+      <div class="toolbar">
+        <h2>员工数据报表</h2>
+        <button class="plain" id="refreshReport">刷新数据</button>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-box"><h3>职位人数分布</h3><div id="jobChart" class="bar-chart"></div></div>
+        <div class="chart-box"><h3>员工性别占比</h3><div id="genderChart"></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ======================= 通用弹窗 ======================= -->
+<div id="modal" class="modal hidden">
+  <form id="modalForm" class="dialog">
+    <h3 id="modalTitle"></h3>
+    <div id="formFields" class="form"></div>
+    <div class="actions">
+      <button type="button" class="plain" id="cancelBtn">取消</button>
+      <button class="primary" type="submit">保存</button>
+    </div>
+  </form>
+</div>
+
+<div id="toast" class="toast ok hidden"></div>
+<script>
+'use strict';
+/* =========================================================
+ * Tlias 前后端联调面板
+ * 对接后端已有接口：/login /emps /depts /clazzs /report/* /upload
+ * 所有业务请求自动携带 token，401 自动回到登录页
+ * ========================================================= */
+
+/* ---------- 基础工具 ---------- */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDT   = v => v ? String(v).replace('T',' ').slice(0,19) : '-';
+const fmtDate = v => v ? String(v).slice(0,10) : '-';
+const num = v => (v === '' || v === null || v === undefined) ? null : Number(v);
+const GENDER = {1:'男', 2:'女'};
+const JOB    = {1:'班主任', 2:'讲师', 3:'学工主管', 4:'教研主管', 5:'咨询师'};
+
+/* ---------- 状态 ---------- */
+const LS_TOKEN = 'tlias_token', LS_USER = 'tlias_user';
+let token = localStorage.getItem(LS_TOKEN) || '';
+let user  = null;
+try { user = JSON.parse(localStorage.getItem(LS_USER) || 'null'); } catch (e) { user = null; }
+
+const emp = {page:1, pageSize:10, total:0, sel:new Set()};   // 员工分页 + 选中
+const clz = {page:1, pageSize:10, total:0};                  // 班级分页
+let depts = [], masters = [], mastersLoaded = false;         // 部门 / 班主任(员工)缓存
+let opened = new Set();                                      // 已加载过的 Tab
+let curExprList = [];                                        // 编辑员工时保留工作经历
+
+/* ---------- Toast ---------- */
+let toastTimer = null;
+function notify(msg, bad = false){
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = 'toast ' + (bad ? 'bad' : 'ok');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), 2600);
+}
+
+/* ---------- 请求封装：自动带 token、401 登出 ---------- */
+async function api(path, options = {}){
+  const headers = Object.assign({token}, options.headers || {});
+  let res;
+  try {
+    res = await fetch(path, Object.assign({}, options, {headers}));
+  } catch (e) {
+    throw new Error('网络请求失败，请确认后端已启动（' + (e.message || '无法连接') + '）');
+  }
+  if (res.status === 401){ forceLogout('登录已过期，请重新登录'); throw new Error('未登录或登录已过期'); }
+  let body = null;
+  try { body = await res.json(); } catch (e) { throw new Error('HTTP ' + res.status + '：响应解析失败'); }
+  if (!res.ok) throw new Error('HTTP ' + res.status + (body && body.msg ? '：' + body.msg : ''));
+  if (body.code !== 1) throw new Error(body.msg || '请求失败');
+  return body.data;
+}
+const postJSON = (path, data) => api(path, {method:'POST',   headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+const putJSON  = (path, data) => api(path, {method:'PUT',    headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+async function uploadAvatar(file){
+  const fd = new FormData();
+  fd.append('file', file);
+  return api('/upload', {method:'POST', body:fd});
+}
+
+/* ---------- 登录 / 登出 ---------- */
+function showLogin(msg){
+  $('#loginView').classList.remove('hidden');
+  $('#appView').classList.add('hidden');
+  if (msg) setLoginErr(msg);
+}
+function setLoginErr(msg){ $('#loginErr').textContent = msg || ''; }
+function showApp(){
+  $('#appView').classList.remove('hidden');
+  $('#loginView').classList.add('hidden');
+  if (user){
+    $('#userName').textContent   = user.name || user.username || '';
+    $('#userAccount').textContent = user.username ? '@' + user.username : '';
+  }
+}
+function forceLogout(msg){
+  token = ''; user = null;
+  localStorage.removeItem(LS_TOKEN);
+  localStorage.removeItem(LS_USER);
+  showLogin(msg);
+}
+$('#logoutBtn').addEventListener('click', () => {
+  forceLogout('');
+  notify('已退出登录');
+  $('#loginUsername').value = '';
+  $('#loginPassword').value = '';
+});
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#loginBtn');
+  btn.disabled = true; setLoginErr('');
+  btn.textContent = '登录中…';
+  try {
+    const info = await postJSON('/login', {
+      username: $('#loginUsername').value.trim(),
+      password: $('#loginPassword').value
+    });
+    token = info.token; user = info;
+    localStorage.setItem(LS_TOKEN, token);
+    localStorage.setItem(LS_USER, JSON.stringify(user));
+    showApp();
+    await loadAll();
+    notify('欢迎回来，' + (user.name || user.username));
+  } catch (err) { setLoginErr(err.message); }
+  finally { btn.disabled = false; btn.textContent = '登 录'; }
+});
+
+/* ---------- 加载总入口 ---------- */
+async function loadAll(){
+  await Promise.all([loadDepts(), loadEmps()]);
+}
+
+/* =========================================================
+ * 部门管理
+ * ========================================================= */
+async function loadDepts(){
+  depts = await api('/depts');
+  renderDepts();
+}
+function renderDepts(){
+  $('#deptRows').innerHTML = depts.length ? depts.map(d => `
+    <tr>
+      <td>${d.id}</td>
+      <td>${esc(d.name)}</td>
+      <td>${fmtDT(d.createTime)}</td>
+      <td>${fmtDT(d.updateTime)}</td>
+      <td class="ops"><button class="plain" data-action="edit" data-id="${d.id}">编辑</button>
+          <button class="danger" data-action="del" data-id="${d.id}">删除</button></td>
+    </tr>`).join('')
+    : '<tr><td colspan="5" class="empty">暂无部门数据</td></tr>';
+}
+function openDeptModal(dept){
+  const editing = !!dept;
+  openModal(editing ? '编辑部门' : '新增部门',
+    fieldHtml('部门名称', inputHtml('name','text', dept ? dept.name : '', '请输入部门名称', true), true),
+    async f => {
+      const obj = {name: f.get('name').trim()};
+      if (editing) obj.id = dept.id;
+      editing ? await putJSON('/depts', obj) : await postJSON('/depts', obj);
+      notify(editing ? '部门已更新' : '部门已新增');
+      await loadDepts();
+    });
+}
+async function removeDept(id){
+  if (!confirm('确定删除该部门吗？')) return;
+  try {
+    await api('/depts?id=' + id, {method:'DELETE'});
+    notify('部门已删除');
+    await loadDepts();
+  } catch (e) { notify(e.message, true); }
+}
+
+/* =========================================================
+ * 员工管理
+ * ========================================================= */
+async function loadEmps(){
+  const fd = new FormData($('#empSearch'));
+  const p = new URLSearchParams({page:emp.page, pageSize:emp.pageSize});
+  for (const [k,v] of fd) if (v) p.set(k, v);
+  const data = await api('/emps?' + p);
+  emp.total = Number(data.total || 0);
+  // 翻页/刷新后仅保留仍然存在的选中 id
+  emp.sel = new Set([...emp.sel].filter(id => (data.rows || []).some(r => r.id === id)));
+  renderEmps(data.rows || []);
+  updateEmpPager();
+  updateBatchDel();
+}
+function renderEmps(rows){
+  $('#empRows').innerHTML = rows.length ? rows.map(e => `
+    <tr>
+      <td><input type="checkbox" class="chk row-check" data-id="${e.id}" ${emp.sel.has(e.id) ? 'checked' : ''} /></td>
+      <td>${e.image ? `<img class="avatar" src="${esc(e.image)}" alt="头像" />` : '<span class="no-avatar">-</span>'}</td>
+      <td>${e.id}</td>
+      <td>${esc(e.name)}</td>
+      <td>${esc(e.username)}</td>
+      <td>${GENDER[e.gender] || '-'}</td>
+      <td>${esc(e.phone) || '-'}</td>
+      <td>${JOB[e.job] || '-'}</td>
+      <td>${esc(e.deptName) || '-'}</td>
+      <td>${e.salary != null ? Number(e.salary).toLocaleString() : '-'}</td>
+      <td>${fmtDate(e.entryDate)}</td>
+      <td class="ops"><button class="plain" data-action="edit" data-id="${e.id}">编辑</button>
+          <button class="danger" data-action="del" data-id="${e.id}">删除</button></td>
+    </tr>`).join('')
+    : '<tr><td colspan="12" class="empty">暂无员工数据</td></tr>';
+}
+function updateEmpPager(){
+  $('#empTotal').textContent = '共 ' + emp.total + ' 条';
+  $('#empInfo').textContent  = '第 ' + emp.page + ' 页';
+  $('#empPrev').disabled = emp.page <= 1;
+  $('#empNext').disabled = emp.page * emp.pageSize >= emp.total;
+}
+function updateBatchDel(){
+  const btn = $('#empBatchDel');
+  btn.disabled = emp.sel.size === 0;
+  btn.textContent = emp.sel.size ? `批量删除（${emp.sel.size}）` : '批量删除';
+}
+function deptOptions(selected){
+  const opts = depts.map(d => ({value:d.id, label:d.name}));
+  return selectHtml('deptId', opts, selected, true, '请选择部门');
+}
+function openEmpModal(empRow){
+  const editing = !!empRow;
+  const e = empRow || {};
+  curExprList = e.exprList || [];
+  const fields =
+    fieldHtml('姓名',   inputHtml('name','text', e.name || '', '请输入姓名', true)) +
+    fieldHtml('用户名', inputHtml('username','text', e.username || '', '请输入用户名', true)) +
+    fieldHtml(editing ? '密码（不修改留空）' : '密码', inputHtml('password','password', '', '请输入密码', !editing)) +
+    fieldHtml('手机号', inputHtml('phone','tel', e.phone || '', '请输入手机号')) +
+    fieldHtml('性别', selectHtml('gender', [{value:1,label:'男'},{value:2,label:'女'}], e.gender ?? 1, false)) +
+    fieldHtml('职位', selectHtml('job', Object.keys(JOB).map(k => ({value:+k, label:JOB[k]})), e.job ?? '', false, '请选择职位')) +
+    fieldHtml('部门', deptOptions(e.deptId)) +
+    fieldHtml('工资', inputHtml('salary','number', e.salary ?? '', '请输入工资')) +
+    fieldHtml('入职日期', inputHtml('entryDate','date', e.entryDate ? String(e.entryDate).slice(0,10) : '')) +
+    '<label class="f-item wide"><span>头像</span><input id="imageFile" type="file" accept="image/*" /></label>' +
+    `<input type="hidden" name="image" value="${esc(e.image || '')}" />`;
+  openModal(editing ? '编辑员工' : '新增员工', fields, async f => {
+    const fileInput = $('#imageFile');
+    if (fileInput && fileInput.files && fileInput.files[0]){
+      f.set('image', await uploadAvatar(fileInput.files[0]));
+    }
+    const obj = Object.fromEntries(f);
+    ['gender','job','deptId','salary'].forEach(k => { obj[k] = num(obj[k]); });
+    obj.exprList = curExprList;                 // 后端按 exprList 整体覆盖，必须原样回传
+    if (editing){
+      obj.id = e.id;
+      await putJSON('/emps', obj);
+      notify('员工已更新');
+    } else {
+      await postJSON('/emps', obj);
+      notify('员工已新增');
+    }
+    await loadEmps();
+  });
+}
+async function editEmp(id){
+  try {
+    const e = await api('/emps/' + id);
+    openEmpModal(e);
+  } catch (err) { notify(err.message, true); }
+}
+async function removeEmp(id){
+  if (!confirm('确定删除该员工吗？')) return;
+  try {
+    await api('/emps?ids=' + encodeURIComponent(id), {method:'DELETE'});
+    emp.sel.delete(id);
+    notify('员工已删除');
+    if (emp.page > 1 && emp.total === (emp.page - 1) * emp.pageSize + 1) emp.page--;
+    await loadEmps();
+  } catch (e) { notify(e.message, true); }
+}
+async function removeEmps(ids){
+  if (!confirm(`确定删除选中的 ${ids.length} 名员工吗？`)) return;
+  try {
+    await api('/emps?ids=' + encodeURIComponent(ids.join(',')), {method:'DELETE'});
+    notify('已删除 ' + ids.length + ' 名员工');
+    emp.sel.clear();
+    if (emp.page > 1 && emp.total <= (emp.page - 1) * emp.pageSize) emp.page--;
+    await loadEmps();
+  } catch (e) { notify(e.message, true); }
+}
+/* =========================================================
+ * 班级管理（后端接口：/clazzs）
+ * ========================================================= */
+async function loadClazzs(){
+  const fd = new FormData($('#clzSearch'));
+  const p = new URLSearchParams({page:clz.page, pageSize:clz.pageSize});
+  for (const [k,v] of fd) if (v) p.set(k, v);
+  const data = await api('/clazzs?' + p);
+  clz.total = Number(data.total || 0);
+  $('#clzTotal').textContent = '共 ' + clz.total + ' 条';
+  $('#clzInfo').textContent  = '第 ' + clz.page + ' 页';
+  $('#clzPrev').disabled = clz.page <= 1;
+  $('#clzNext').disabled = clz.page * clz.pageSize >= clz.total;
+  const rows = data.rows || [];
+  $('#clzRows').innerHTML = rows.length ? rows.map(c => {
+    const begin = c.begin || c.beginDate || '';
+    const end   = c.end   || c.endDate   || '';
+    return `<tr>
+      <td>${c.id}</td>
+      <td>${esc(c.name)}</td>
+      <td>${c.room ?? '-'}</td>
+      <td>${fmtDate(begin)}</td>
+      <td>${fmtDate(end)}</td>
+      <td>${c.masterId ?? '-'}</td>
+      <td>${c.subject ?? '-'}</td>
+      <td>${fmtDT(c.createTime)}</td>
+      <td class="ops"><button class="plain" data-action="edit" data-id="${c.id}">编辑</button>
+          <button class="danger" data-action="del" data-id="${c.id}">删除</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="9" class="empty">暂无班级数据</td></tr>';
+}
+async function ensureMasters(){
+  if (mastersLoaded) return;
+  mastersLoaded = true;
+  try {
+    const data = await api('/emps?page=1&pageSize=1000');
+    masters = (data.rows || []).filter(x => x.id != null).map(x => ({
+      value:x.id, label:`${x.name}（ID:${x.id}${x.username ? ' · ' + x.username : ''}）`
+    }));
+  } catch (e) { masters = []; }   // 拉不到员工时退回手填 ID
+}
+async function openClzModal(clzRow){
+  await ensureMasters();
+  const editing = !!clzRow;
+  const c = clzRow || {};
+  const beginVal = c.begin || c.beginDate || '';
+  const endVal   = c.end   || c.endDate   || '';
+  const masterField = masters.length
+    ? fieldHtml('班主任', selectHtml('masterId', masters, c.masterId ?? '', false, '请选择班主任'))
+    : fieldHtml('班主任ID', inputHtml('masterId','number', c.masterId ?? '', '请输入班主任ID'));
+  const fields =
+    fieldHtml('班级名称', inputHtml('name','text', c.name || '', '请输入班级名称', true)) +
+    fieldHtml('教室', inputHtml('room','number', c.room ?? '', '如：301')) +
+    fieldHtml('开班日期', inputHtml('beginDate','date', beginVal ? String(beginVal).slice(0,10) : '', '', true)) +
+    fieldHtml('结业日期', inputHtml('endDate','date', endVal ? String(endVal).slice(0,10) : '', '', true)) +
+    masterField +
+    fieldHtml('学科', inputHtml('subject','number', c.subject ?? '', '学科编号'));
+  openModal(editing ? '编辑班级' : '新增班级', fields, async f => {
+    const obj = Object.fromEntries(f);
+    ['room','masterId','subject'].forEach(k => { obj[k] = num(obj[k]); });
+    if (editing){ obj.id = c.id; await putJSON('/clazzs', obj); notify('班级已更新'); }
+    else        {              await postJSON('/clazzs', obj); notify('班级已新增'); }
+    await loadClazzs();
+  });
+}
+async function editClz(id){
+  try {
+    const c = await api('/clazzs/' + id);
+    openClzModal(c);
+  } catch (err) { notify(err.message, true); }
+}
+async function removeClz(id){
+  if (!confirm('确定删除该班级吗？')) return;
+  try {
+    await api('/clazzs/' + id, {method:'DELETE'});
+    notify('班级已删除');
+    if (clz.page > 1 && clz.total === (clz.page - 1) * clz.pageSize + 1) clz.page--;
+    await loadClazzs();
+  } catch (e) { notify(e.message, true); }
+}
+
+/* =========================================================
+ * 数据报表
+ * ========================================================= */
+async function loadReport(){
+  const [jobs, genders] = await Promise.all([
+    api('/report/empJobData'),
+    api('/report/empGenderData')
+  ]);
+  renderJobChart(jobs);
+  renderGenderChart(genders);
+}
+function renderJobChart(data){
+  const labels = (data && data.jobList) || [], values = (data && data.dataList) || [];
+  const max = Math.max(1, ...values.map(Number));
+  $('#jobChart').innerHTML = labels.length ? labels.map((label, i) => {
+    const v = Number(values[i] || 0);
+    return `<div class="bar-item">
+      <span class="bar-value">${v} 人</span>
+      <div class="bar" style="height:${Math.max(3, v / max * 82)}%"></div>
+      <span class="bar-label">${esc(label)}</span>
+    </div>`;
+  }).join('') : '<p class="chart-empty">暂无职位数据</p>';
+}
+function renderGenderChart(rows){
+  const colors = ['#2563eb', '#f59e0b', '#8b5cf6', '#10b981'];
+  const total = (rows || []).reduce((s, r) => s + Number(r.value || 0), 0);
+  let cursor = 0;
+  const stops = (rows || []).map((row, i) => {
+    const next = cursor + (total ? Number(row.value || 0) / total * 100 : 0);
+    const stop = `${colors[i % colors.length]} ${cursor}% ${next}%`;
+    cursor = next;
+    return stop;
+  });
+  $('#genderChart').innerHTML = total ? `
+    <div class="donut-wrap">
+      <div class="donut" style="background:conic-gradient(${stops.join(',')})"></div>
+      <div class="donut-center">员工总数<b>${total}</b></div>
+    </div>
+    <div class="legend">${(rows || []).map((row, i) =>
+      `<span style="--c:${colors[i % colors.length]}">${esc(row.name)} ${Number(row.value)} 人</span>`).join('')}
+    </div>` : '<p class="chart-empty">暂无性别数据</p>';
+}
+
+/* =========================================================
+ * 通用弹窗 & 表单片段
+ * ========================================================= */
+function inputHtml(name, type, value, placeholder, required){
+  return `<input name="${name}" type="${type}" value="${esc(value ?? '')}" placeholder="${esc(placeholder || '')}" ${required ? 'required' : ''} />`;
+}
+function selectHtml(name, opts, selected, required, placeholderLabel){
+  const ph = placeholderLabel ? `<option value="">${esc(placeholderLabel)}</option>` : '';
+  return `<select name="${name}" ${required ? 'required' : ''}>${ph}${opts.map(o =>
+    `<option value="${o.value}" ${String(o.value) === String(selected ?? '') ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
+}
+function fieldHtml(label, inner, wide){
+  return `<label class="f-item ${wide ? 'wide' : ''}"><span>${label}</span>${inner}</label>`;
+}
+function openModal(title, fieldsHtml, onSubmit){
+  $('#modalTitle').textContent = title;
+  $('#formFields').innerHTML = fieldsHtml;
+  $('#modal').classList.remove('hidden');
+  $('#modalForm').onsubmit = async e => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    if (btn) btn.disabled = true;
+    try {
+      await onSubmit(new FormData(e.target));
+      $('#modal').classList.add('hidden');
+    } catch (err) { notify(err.message, true); }
+    finally { if (btn) btn.disabled = false; }
+  };
+  const first = $('#formFields input:not([type="hidden"]), #formFields select');
+  if (first) first.focus();
+}
+$('#cancelBtn').addEventListener('click', () => $('#modal').classList.add('hidden'));
+
+/* =========================================================
+ * Tab 切换 & 事件委托
+ * ========================================================= */
+const VIEWS = ['employees', 'departments', 'clazzs', 'reports'];
+function activateTab(view){
+  VIEWS.forEach(v => $('#view-' + v).classList.toggle('hidden', v !== view));
+  $$('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  if (!opened.has(view)){
+    opened.add(view);
+    if (view === 'clazzs')  loadClazzs().catch(e => notify(e.message, true));
+    if (view === 'reports') loadReport().catch(e => notify(e.message, true));
+  }
+}
+$$('#tabs .tab').forEach(b => b.addEventListener('click', () => activateTab(b.dataset.view)));
+
+/* 员工：查询/重置/分页/批量 */
+$('#empSearch').addEventListener('submit', e => { e.preventDefault(); emp.page = 1; loadEmps().catch(e2 => notify(e2.message, true)); });
+$('#empSearch').addEventListener('reset', () => setTimeout(() => { emp.page = 1; loadEmps().catch(e2 => notify(e2.message, true)); }));
+$('#empPrev').addEventListener('click', () => { if (emp.page > 1){ emp.page--; loadEmps().catch(e2 => notify(e2.message, true)); } });
+$('#empNext').addEventListener('click', () => { if (emp.page * emp.pageSize < emp.total){ emp.page++; loadEmps().catch(e2 => notify(e2.message, true)); } });
+$('#addEmpBtn').addEventListener('click', () => openEmpModal(null));
+$('#empBatchDel').addEventListener('click', () => removeEmps([...emp.sel]));
+
+/* 班级：查询/重置/分页 */
+$('#clzSearch').addEventListener('submit', e => { e.preventDefault(); clz.page = 1; loadClazzs().catch(e2 => notify(e2.message, true)); });
+$('#clzSearch').addEventListener('reset', () => setTimeout(() => { clz.page = 1; loadClazzs().catch(e2 => notify(e2.message, true)); }));
+$('#clzPrev').addEventListener('click', () => { if (clz.page > 1){ clz.page--; loadClazzs().catch(e2 => notify(e2.message, true)); } });
+$('#clzNext').addEventListener('click', () => { if (clz.page * clz.pageSize < clz.total){ clz.page++; loadClazzs().catch(e2 => notify(e2.message, true)); } });
+$('#addClzBtn').addEventListener('click', () => openClzModal(null));
+
+$('#addDeptBtn').addEventListener('click', () => openDeptModal(null));
+$('#refreshReport').addEventListener('click', () => loadReport().catch(e => notify(e.message, true)));
+
+/* 表格操作按钮：data-action + data-id 委托 */
+function bindRows(bodyId, handlers){
+  const body = $(bodyId);
+  body.addEventListener('click', async e => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+    const fn = handlers[btn.dataset.action];
+    if (fn) { try { await fn(id); } catch (err) { notify(err.message, true); } }
+  });
+}
+bindRows('#deptRows', {edit:id => openDeptModal(depts.find(d => d.id === id)), del:removeDept});
+bindRows('#empRows',  {edit:editEmp, del:removeEmp});
+bindRows('#clzRows',  {edit:editClz, del:removeClz});
+
+/* 员工勾选 / 全选 */
+$('#empRows').addEventListener('change', e => {
+  if (!e.target.classList.contains('row-check')) return;
+  const id = Number(e.target.dataset.id);
+  e.target.checked ? emp.sel.add(id) : emp.sel.delete(id);
+  syncCheckAll();
+  updateBatchDel();
+});
+$('#empCheckAll').addEventListener('change', e => {
+  const boxes = $$('#empRows .row-check');
+  boxes.forEach(b => {
+    const id = Number(b.dataset.id);
+    if (e.target.checked){ emp.sel.add(id); b.checked = true; }
+    else { emp.sel.delete(id); b.checked = false; }
+  });
+  updateBatchDel();
+});
+function syncCheckAll(){
+  const boxes = $$('#empRows .row-check');
+  $('#empCheckAll').checked = boxes.length > 0 && boxes.every(b => b.checked);
+}
+
+/* =========================================================
+ * 启动
+ * ========================================================= */
+(async function init(){
+  if (token && user){
+    showApp();
+    try { await loadAll(); }
+    catch (e){ if (token) notify(e.message, true); }  // 401 时 forceLogout 已处理
+  } else {
+    showLogin();
+  }
+})();
+</script>
+</body>
+</html>
